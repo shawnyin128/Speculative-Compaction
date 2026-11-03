@@ -25,6 +25,16 @@ with a target model, and repairs rejected proposals with target-generated text.
 - **Reusable interface:** run compaction through a CLI or Python API, with
   acceptance, token usage and timing metadata.
 
+## 🤗 Drafter Checkpoint
+
+Pretrained drafter checkpoints for each target model:
+
+| Target model | Drafter checkpoint |
+|---|---|
+| Qwen3-14B | [sy128/SpecComp-slot-sft-qwen3-14B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-14B) |
+| Gemma4-31B-IT | [sy128/SpecComp-slot-sft-gemma4-31B-it](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) |
+| Qwen3.5-122B-A10B | [sy128/SpecComp-slot-sft-qwen3-5-122B-A10B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) |
+
 ## 🔧 Requirements
 
 Use **Python 3.12 or 3.13** and [uv](https://docs.astral.sh/uv/). Install the locked
