@@ -1,0 +1,8 @@
+draft:
+  url: http://127.0.0.1:8503/v1
+  model: draft
+  tokenizer: sy128/SpecComp-slot-sft-gemma4-31B-it
+target:
+  url: http://127.0.0.1:8502/v1
+  model: target
+  tokenizer: google/gemma-4-31B-it

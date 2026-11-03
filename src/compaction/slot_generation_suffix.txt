@@ -1,0 +1,12 @@
+
+Slot request:
+Generate only the `{slot}` slot as one section of the complete OpenClaw-style summary.
+Slot title: {slot_title}
+Slot contract: {slot_contract}
+
+Use this exact slot-body format:
+{slot_format}
+
+Return only the slot content, not JSON.
+Do not include the top-level slot heading.
+Nested headings required by the slot contract are allowed.
