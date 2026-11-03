@@ -1,0 +1,16 @@
+# Optional: tokenize your existing slot-target rows. Skip for released pretokenized data.
+model_name: Qwen/Qwen3-0.6B
+
+# Set exactly ONE source. No dataset is selected by this template.
+hf_dataset: null
+local_data_dir: null
+# Fill your actual source split names; local shards must match <split>*.parquet.
+splits: []
+
+output_dir: data/slot-sft
+eval_ratio: 0.05
+split_mode: hash
+seed: 17
+cutoff_len: 16384
+context_floor: 256
+max_target_tokens: 1024

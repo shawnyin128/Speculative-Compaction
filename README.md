@@ -27,13 +27,13 @@ with a target model, and repairs rejected proposals with target-generated text.
 
 ## 🤗 Drafter Checkpoint
 
-Pretrained drafter checkpoints for each target model:
+Pretrained drafter checkpoints and pretokenized SFT datasets for each target model:
 
-| Target model | Drafter checkpoint |
-|---|---|
-| Qwen3-14B | [sy128/SpecComp-slot-sft-qwen3-14B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-14B) |
-| Gemma4-31B-IT | [sy128/SpecComp-slot-sft-gemma4-31B-it](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) |
-| Qwen3.5-122B-A10B | [sy128/SpecComp-slot-sft-qwen3-5-122B-A10B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) |
+| Target model | Drafter checkpoint | Pretokenized dataset |
+|---|---|---|
+| Qwen3-14B | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-14B) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-14B) |
+| Gemma4-31B-IT | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-gemma4-31B-it) |
+| Qwen3.5-122B-A10B | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-5-122B-A10B) |
 
 ## 🔧 Requirements
 
@@ -57,20 +57,13 @@ Select one group at a time; do not combine them with `--all-groups`.
 
 ## 👨‍💻 Pipeline
 
-The method and its configuration are separate. Model-specific presets are in
-[`configs/compact/`](configs/compact/):
+The repository keeps one shared training recipe and one optional data-preparation
+template. Choose the target-specific checkpoint or dataset from the table above.
 
-| Target | Config |
+| Stage | Config |
 |---|---|
-| `google/gemma-4-31B-it` | [gemma4.yaml](configs/compact/gemma4.yaml) |
-| `Qwen/Qwen3.5-122B-A10B` | [qwen35.yaml](configs/compact/qwen35.yaml) |
-
-Copy the preset for your target and edit the endpoint URLs and served model
-names. Keep each endpoint's tokenizer matched to the corresponding model:
-
-```shell
-cp configs/compact/gemma4.yaml configs/compact/my_run.yaml
-```
+| Train the drafter | [slot-sft.yaml](configs/train/slot-sft.yaml) |
+| Prepare your own SFT data (optional) | [prepare-sft.example.yaml](configs/prepare-sft.example.yaml) |
 
 ### 🎯 Run
 
@@ -79,9 +72,20 @@ pretrained drafter; SFT is optional.
 
 **Step 1: Configure the model endpoints.**
 
-Set `draft.url`, `draft.model`, `target.url` and `target.model` in your YAML to
-match the running servers. The presets use ports `8503` and `8502` and served
-model aliases `draft` and `target`.
+Create your own `compact.yaml` with the URLs, served model names and tokenizers
+for your running servers. This is an inference connection configuration, separate
+from the training recipe. Replace all placeholder values:
+
+```yaml
+draft:
+  url: http://DRAFT_HOST:DRAFT_PORT/v1
+  model: YOUR_SERVED_DRAFTER
+  tokenizer: YOUR_DRAFTER_CHECKPOINT_OR_PATH
+target:
+  url: http://TARGET_HOST:TARGET_PORT/v1
+  model: YOUR_SERVED_TARGET
+  tokenizer: YOUR_TARGET_MODEL_OR_PATH
+```
 
 For authenticated servers, set the environment variable named by each endpoint's
 `api_key_env` (default `VLLM_API_KEY`). Put only the environment variable name in
@@ -89,7 +93,7 @@ YAML. Inspect the effective settings without loading tokenizers or calling model
 
 ```shell
 uv run --locked --group inference speccompact compact \
-  --config configs/compact/my_run.yaml --print-config
+  --config compact.yaml --print-config
 ```
 
 **Step 2: Compact the conversation context.**
@@ -98,7 +102,7 @@ Save the rendered conversation as UTF-8 text in `context.txt`:
 
 ```shell
 uv run --locked --group inference speccompact compact \
-  --config configs/compact/my_run.yaml \
+  --config compact.yaml \
   --input context.txt \
   --output outputs/compacted.json
 ```
@@ -119,7 +123,7 @@ Parameter definitions, defaults and validation live in
 
 | Parameters | Default | Description |
 |---|---|---|
-| `draft`, `target` | Model-specific presets | Endpoint URL, served model name, tokenizer and API-key environment name. |
+| `draft`, `target` | User-supplied | Endpoint URL, served model name, tokenizer and API-key environment name. |
 | `slot_concurrency` | `6` | Number of concurrent slot workers. Set `1` for serial slots. |
 | `verify`, `verify_method` | `true`, `dreamr` | Enable semantic verification and select the probability (`dreamr`) or digit-score (`sr`) verifier. |
 | `eta` | `0.7` for `dreamr`; `7` for `sr` | Acceptance threshold on the selected verifier's scale. Threshold equality accepts. |
@@ -138,41 +142,60 @@ The training pipeline prepares slot-supervision data and invokes the actual
 LLaMA-Factory LoRA SFT trainer. The framework is a separate module under
 [`src/LlamaFactory/`](src/LlamaFactory/), with its original license.
 
-**Step 1: Prepare the pretokenized dataset.**
+**Step 1: Download a pretokenized dataset.**
 
-Edit [`configs/data/slot-sft.yaml`](configs/data/slot-sft.yaml). Select either a
-Hub dataset (`hf_dataset`) or a local Parquet directory (`local_data_dir`), and
-set `splits` and `output_dir`. Local shards must match `<split>*.parquet`; source
-rows require `trace_id`, `slot`, `context_text` and `slot_target`.
+Choose the target-specific dataset from the checkpoint table above. For example:
 
 ```shell
-uv sync --locked --group training
-uv run --locked --group training speccompact prepare-sft \
-  --config configs/data/slot-sft.yaml
+uvx --from huggingface_hub hf download \
+  sy128/SpecComp-slot-sft-pretokenized-gemma4-31B-it \
+  --repo-type dataset --local-dir data/slot-sft
 ```
 
-The builder preserves the shared training/inference prompt contract, masks prompt
-labels, keeps complete targets with EOS, and writes an Arrow-backed `DatasetDict`
-with a build manifest. The default hash split holds out whole trace IDs. Only
-context may be shortened; overlong targets are dropped rather than truncated.
+These datasets are saved `DatasetDict` directories. Download the files and use
+`tokenized_path` (or `datasets.load_from_disk`), rather than `load_dataset`.
+The released pretokenized data already contains the training and validation
+partitions, prompt-label masking and target EOS; skip data preparation when using it.
 
 **Step 2: Fine-tune the drafter.**
 
-Edit [`configs/train/gemma4.yaml`](configs/train/gemma4.yaml) or
-[`configs/train/qwen35.yaml`](configs/train/qwen35.yaml). Set `tokenized_path` to
-the dataset from step 1 and select a new `output_dir`:
+Edit [`configs/train/slot-sft.yaml`](configs/train/slot-sft.yaml). Set
+`tokenized_path` to your downloaded dataset directory and choose a new
+`output_dir`:
 
 ```shell
+uv sync --locked --group training
 uv run --locked --group training speccompact train-sft \
-  --config configs/train/gemma4.yaml
+  --config configs/train/slot-sft.yaml
 ```
 
-The training model defaults to `Qwen/Qwen3-0.6B`; teacher-specific presets select
-the data and output paths. The recipe uses LoRA rank `16`, alpha `32`, learning
-rate `0.0001`, one epoch and BF16. Training requires the prebuilt `train` and
+The shared recipe trains `Qwen/Qwen3-0.6B` with LoRA rank `16`, alpha `32`,
+learning rate `0.0001`, one epoch and BF16. The target-specific dataset determines
+which teacher the drafter learns from. Training requires prebuilt `train` and
 `validation` partitions and a compatible PyTorch/CUDA and attention setup.
-The `flash_attn` setting is configurable. Teacher-target generation is outside
-this repository's training entrypoint.
+The `flash_attn` setting is configurable.
+
+**Optional: Prepare your own SFT data.**
+
+Copy [`configs/prepare-sft.example.yaml`](configs/prepare-sft.example.yaml) and
+fill in exactly one source (`hf_dataset` or `local_data_dir`) and your actual
+split names in `splits`. The template deliberately selects no dataset or splits.
+Local shards must match `<split>*.parquet`; source rows require `trace_id`,
+`slot`, `context_text` and `slot_target`.
+
+```shell
+cp configs/prepare-sft.example.yaml prepare-sft.yaml
+# Edit prepare-sft.yaml to select your source, splits and output directory.
+uv run --locked --group training speccompact prepare-sft \
+  --config prepare-sft.yaml
+```
+
+This step tokenizes existing slot-target rows; it does not generate teacher
+responses. It preserves the shared training/inference prompt contract, masks
+prompt labels, keeps complete targets with EOS, and writes an Arrow-backed
+`DatasetDict` with a build manifest. The default hash split holds out whole trace
+IDs. Only context may be shortened; overlong targets are dropped rather than
+truncated.
 
 ## ⚡ Python Interface
 
@@ -182,7 +205,7 @@ from pathlib import Path
 from compaction.compaction import Compactor
 from hparam.hparam import load_config
 
-parameters = load_config(Path("configs/compact/gemma4.yaml"), "compact")
+parameters = load_config(Path("compact.yaml"), "compact")
 compactor = Compactor(parameters)
 result = compactor.compact(Path("context.txt").read_text(encoding="utf8"))
 

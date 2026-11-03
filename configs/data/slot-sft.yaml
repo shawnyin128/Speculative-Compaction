@@ -1,2 +1,0 @@
-hf_dataset: scatyf3/speccompact-slot-targets-qwen3_14b
-output_dir: data/slot-sft

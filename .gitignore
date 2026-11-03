@@ -7,6 +7,9 @@ __pycache__/
 /outputs/
 /checkpoints/
 /wandb/
+/compact.yaml
+/prepare-sft.yaml
+/context.txt
 .env
 .env.*
 *.log

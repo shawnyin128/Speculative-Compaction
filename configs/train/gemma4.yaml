@@ -1,3 +1,0 @@
-tokenized_path: data/SpecComp-slot-sft-pretokenized-gemma4-31B-it
-output_dir: outputs/slot-sft-gemma4
-run_name: slot_sft_gemma4

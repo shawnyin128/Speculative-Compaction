@@ -8,7 +8,7 @@ Install it through the SpecCompact training environment from the repository root
 
 ```shell
 uv sync --locked --group training
-uv run --locked --group training speccompact train-sft --config configs/train/gemma4.yaml
+uv run --locked --group training speccompact train-sft --config configs/train/slot-sft.yaml
 ```
 
 Prepare the tokenized train/validation dataset as described in the repository

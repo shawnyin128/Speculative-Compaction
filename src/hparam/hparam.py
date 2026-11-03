@@ -167,7 +167,7 @@ class Data:
     model_name: str = "Qwen/Qwen3-0.6B"
     hf_dataset: str | None = None
     local_data_dir: str | None = None
-    splits: list[str] = field(default_factory=lambda: ["tau3", "appworld", "liveclawbench"])
+    splits: list[str] = field(default_factory=list)
     output_dir: str = "data/slot-sft"
     eval_ratio: float = 0.05
     split_mode: Literal["hash", "shuffle"] = "hash"
