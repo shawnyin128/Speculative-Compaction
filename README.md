@@ -31,9 +31,9 @@ Pretrained drafter checkpoints and pretokenized SFT datasets for each target mod
 
 | Target model | Drafter checkpoint | Pretokenized dataset |
 |---|---|---|
-| Qwen3-14B | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-14B) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-14B) |
-| Gemma4-31B-IT | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-gemma4-31B-it) |
-| Qwen3.5-122B-A10B | [Checkpoint](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) | [Dataset](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-5-122B-A10B) |
+| Qwen3-14B | [sy128/SpecComp-slot-sft-qwen3-14B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-14B) | [sy128/SpecComp-slot-sft-pretokenized-qwen3-14B](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-14B) |
+| Gemma4-31B-IT | [sy128/SpecComp-slot-sft-gemma4-31B-it](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) | [sy128/SpecComp-slot-sft-pretokenized-gemma4-31B-it](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-gemma4-31B-it) |
+| Qwen3.5-122B-A10B | [sy128/SpecComp-slot-sft-qwen3-5-122B-A10B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) | [sy128/SpecComp-slot-sft-pretokenized-qwen3-5-122B-A10B](https://huggingface.co/datasets/sy128/SpecComp-slot-sft-pretokenized-qwen3-5-122B-A10B) |
 
 ## 🔧 Requirements
 
