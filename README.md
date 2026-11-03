@@ -1,59 +1,171 @@
 <h1 align="center">SpecCompact: Accelerating LLM Agent Context Compaction with Slot-Parallel Semantic Speculative Verification</h1>
 
-![SpecCompact demo](asset/demo.gif)
+<p align="center">
+  <img src="asset/demo.gif" alt="SpecCompact compaction demo" width="100%">
+</p>
 
-SpecCompact accelerates agent context compaction by drafting six semantic slots
-in parallel. A target model verifies proposed lines and repairs rejected ones.
-The result is a structured summary for continuing the conversation.
+This repository provides the official implementation of **SpecCompact**, a
+speculative context compaction method for **LLM agents**. SpecCompact uses a small
+drafter to generate structured summary slots in parallel, verifies proposed lines
+with a target model, and repairs rejected proposals with target-generated text.
 
-This repository contains the core method, SFT data preparation and training.
+## ⭐ Highlights
 
-## Installation
+- **Slot-parallel drafting:** compact conversation history into six semantic
+  slots: goals, constraints and preferences, progress, key decisions, next steps,
+  and critical context.
+- **Semantic speculative verification:** accept draft lines based on the target
+  model's semantic judgment rather than exact token agreement.
+- **Target repair:** replace rejected proposals with target-generated lines and
+  continue drafting from the committed summary prefix.
+- **Inference optimizations:** reuse a shared target prompt prefix and buffer
+  draft lines while their accepted prefix remains valid.
+- **Slot SFT pipeline:** prepare prompt-masked training data and fine-tune the
+  drafter with the separately packaged LLaMA-Factory module.
+- **Reusable interface:** run compaction through a CLI or Python API, with
+  acceptance, token usage and timing metadata.
 
-Use Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/).
+## 🔧 Requirements
 
-```bash
+Use **Python 3.12 or 3.13** and [uv](https://docs.astral.sh/uv/). Install the locked
+inference environment from the repository root:
+
+```shell
 git clone git@github.com:shawnyin128/Speculative-Compaction.git
 cd Speculative-Compaction
 uv sync --locked --group inference
-uv run --locked --group inference speccompact --help
 ```
 
-Inference and training use separate dependency groups because the retained
-trainer and inference tokenizers require different library versions. Select one
-group at a time; do not use `--all-groups`.
+Compaction connects to separately running OpenAI-compatible model servers. The
+draft server must expose `/v1/completions`; the target server must also expose
+`/v1/chat/completions` with token log probabilities. Model serving requires
+sufficient GPU memory for the selected models; the client does not allocate or
+launch these servers.
 
-## Compact a context
+The `inference` and `training` dependency groups use different library versions.
+Select one group at a time; do not combine them with `--all-groups`.
 
-Start OpenAI-compatible draft and target model servers separately. The draft
-server must expose `/v1/completions`; the target must also expose
-`/v1/chat/completions` with token log probabilities for verification. This package
-does not launch or allocate model servers.
+## 👨‍💻 Pipeline
 
-Edit `configs/compact/gemma4.yaml` or `configs/compact/qwen35.yaml` to match your
-server URLs and served model names. Keep each endpoint's tokenizer matched to
-that model. The presets use these model/tokenizer IDs:
+The method and its configuration are separate. Model-specific presets are in
+[`configs/compact/`](configs/compact/):
 
-| Preset | SFT drafter | Target |
+| Target | SFT drafter | Config |
 |---|---|---|
-| `gemma4` | `sy128/SpecComp-slot-sft-gemma4-31B-it` | `google/gemma-4-31B-it` |
-| `qwen35` | `sy128/SpecComp-slot-sft-qwen3-5-122B-A10B` | `Qwen/Qwen3.5-122B-A10B` |
+| `google/gemma-4-31B-it` | `sy128/SpecComp-slot-sft-gemma4-31B-it` | [gemma4.yaml](configs/compact/gemma4.yaml) |
+| `Qwen/Qwen3.5-122B-A10B` | `sy128/SpecComp-slot-sft-qwen3-5-122B-A10B` | [qwen35.yaml](configs/compact/qwen35.yaml) |
 
-Save the rendered conversation as UTF-8 text, then run:
+Copy the preset for your target and edit the endpoint URLs and served model
+names. Keep each endpoint's tokenizer matched to the corresponding model:
 
-```bash
-uv run --locked --group inference speccompact compact \
-  --config configs/compact/gemma4.yaml \
-  --input context.txt --output outputs/compacted.json
+```shell
+cp configs/compact/gemma4.yaml configs/compact/my_run.yaml
 ```
 
-The JSON contains `text`, `metadata` and the effective `configuration`. Metadata
-records wall time, acceptance and repair counts, per-role token usage, and timing.
-Set `record_llm_calls: true` for individual call and slot decision records. Output
-paths must be new. Input context is not silently truncated.
+### 🎯 Run
+
+**Run every command from the repository root.** The following steps use a
+pretrained drafter; SFT is optional.
+
+**Step 1: Configure the model endpoints.**
+
+Set `draft.url`, `draft.model`, `target.url` and `target.model` in your YAML to
+match the running servers. The presets use ports `8503` and `8502` and served
+model aliases `draft` and `target`.
 
 For authenticated servers, set the environment variable named by each endpoint's
-`api_key_env` (default `VLLM_API_KEY`). Store only the variable name in YAML.
+`api_key_env` (default `VLLM_API_KEY`). Put only the environment variable name in
+YAML. Inspect the effective settings without loading tokenizers or calling models:
+
+```shell
+uv run --locked --group inference speccompact compact \
+  --config configs/compact/my_run.yaml --print-config
+```
+
+**Step 2: Compact the conversation context.**
+
+Save the rendered conversation as UTF-8 text in `context.txt`:
+
+```shell
+uv run --locked --group inference speccompact compact \
+  --config configs/compact/my_run.yaml \
+  --input context.txt \
+  --output outputs/compacted.json
+```
+
+Output: a JSON object containing the compacted `text`, `metadata` and effective
+`configuration`. Metadata includes compaction wall time, accepted and repaired
+line counts, and draft/judge/repair token usage and timing. Set
+`record_llm_calls: true` to include individual call and slot decision records.
+Per-role times may overlap; they are not additive wall time.
+
+Use a new output path for each run. The method consumes the supplied context;
+it does not select historical turns or silently truncate oversized prompts.
+
+### 🔎 Config
+
+Parameter definitions, defaults and validation live in
+[`src/hparam/hparam.py`](src/hparam/hparam.py). The main compaction parameters are:
+
+| Parameters | Default | Description |
+|---|---|---|
+| `draft`, `target` | Model-specific presets | Endpoint URL, served model name, tokenizer and API-key environment name. |
+| `slot_concurrency` | `6` | Number of concurrent slot workers. Set `1` for serial slots. |
+| `verify`, `verify_method` | `true`, `dreamr` | Enable semantic verification and select the probability (`dreamr`) or digit-score (`sr`) verifier. |
+| `eta` | `0.7` for `dreamr`; `7` for `sr` | Acceptance threshold on the selected verifier's scale. Threshold equality accepts. |
+| `max_lines`, `max_line_chars` | `12`, `400` | Per-slot line limit and per-line character limit. |
+| `max_prompt_tokens`, `max_line_tokens` | `28000`, `64` | Prompt token guard and per-call generation limit. |
+| `max_slot_tokens`, `summary_token_budget` | `320`, `2048` | Per-slot output budget and assembled-summary token guard. Set both to `null` to disable token budgets. |
+| `line_split`, `buffer_extra_lines` | `client`, `true` | Split draft text into lines in the client and retain extra lines while the prefix remains valid. |
+| `full_schema_prefix` | `false` | Preserve the drafter's single-slot SFT prompt format. |
+| `fallback_full_schema_prefix`, `verify_shared_prefix` | `true`, `true` | Share the full-schema target prefix across verification and repair. |
+| `structural_bypass` | `true` | Apply deterministic gates to structural lines without a model verification call. |
+| `capture_timing`, `record_llm_calls` | `true`, `false` | Collect timing and optionally retain individual calls and decision records. |
+
+### 🏋️ Drafter SFT
+
+The training pipeline prepares slot-supervision data and invokes the actual
+LLaMA-Factory LoRA SFT trainer. The framework is a separate module under
+[`src/LlamaFactory/`](src/LlamaFactory/), with its original license and a
+[local change record](src/LlamaFactory/LOCAL_CHANGES.md).
+
+**Step 1: Prepare the pretokenized dataset.**
+
+Edit [`configs/data/slot-sft.yaml`](configs/data/slot-sft.yaml). Select either a
+Hub dataset (`hf_dataset`) or a local Parquet directory (`local_data_dir`), and
+set `splits` and `output_dir`. Local shards must match `<split>*.parquet`; source
+rows require `trace_id`, `slot`, `context_text` and `slot_target`.
+
+```shell
+uv sync --locked --group training
+uv run --locked --group training speccompact prepare-sft \
+  --config configs/data/slot-sft.yaml
+```
+
+The builder preserves the shared training/inference prompt contract, masks prompt
+labels, keeps complete targets with EOS, and writes an Arrow-backed `DatasetDict`
+with a build manifest. The default hash split holds out whole trace IDs. Only
+context may be shortened; overlong targets are dropped rather than truncated.
+
+**Step 2: Fine-tune the drafter.**
+
+Edit [`configs/train/gemma4.yaml`](configs/train/gemma4.yaml) or
+[`configs/train/qwen35.yaml`](configs/train/qwen35.yaml). Set `tokenized_path` to
+the dataset from step 1 and select a new `output_dir`:
+
+```shell
+uv run --locked --group training speccompact train-sft \
+  --config configs/train/gemma4.yaml
+```
+
+The training model defaults to `Qwen/Qwen3-0.6B`; teacher-specific presets select
+the data and output paths. The recipe uses LoRA rank `16`, alpha `32`, learning
+rate `0.0001`, one epoch and BF16. Training requires the prebuilt `train` and
+`validation` partitions and a compatible PyTorch/CUDA and attention setup.
+The `flash_attn` setting is configurable. Teacher-target generation is outside
+this repository's training entrypoint.
+
+## ⚡ Python Interface
 
 ```python
 from pathlib import Path
@@ -64,51 +176,31 @@ from hparam.hparam import load_config
 parameters = load_config(Path("configs/compact/gemma4.yaml"), "compact")
 compactor = Compactor(parameters)
 result = compactor.compact(Path("context.txt").read_text(encoding="utf8"))
+
 print(result.text)
+print(result.metadata["elapsed_seconds"])
+print(result.metadata["accept_rate"])
 ```
 
-Settings are defined and validated in
-[`src/hparam/hparam.py`](src/hparam/hparam.py). Use `--print-config` to inspect a
-preset without loading tokenizers or making model calls. Set
-`slot_concurrency: 1` for serial slots; the default is six. `eta` controls the
-semantic acceptance threshold on the selected verifier's scale.
+See [architecture](docs/architecture.md) for module responsibilities and the
+[migration record](docs/migration.md) for preserved behavior and validation limits.
 
-## Prepare SFT data and train
+## 📚 Citation
 
-The locally used LLaMA-Factory runtime is a separate package under
-[`src/LlamaFactory`](src/LlamaFactory), with its own license and
-[local change record](src/LlamaFactory/LOCAL_CHANGES.md).
+Coming soon.
 
-```bash
-uv sync --locked --group training
-uv run --locked --group training speccompact prepare-sft \
-  --config configs/data/slot-sft.yaml
-uv run --locked --group training speccompact train-sft \
-  --config configs/train/gemma4.yaml
-```
+## 🤝 Contributing
 
-Before running, edit the data and training presets to agree on paths. Source rows
-require `trace_id`, `slot`, `context_text` and `slot_target`. Choose a Hub dataset
-or a local directory containing `<split>*.parquet` files. The builder preserves
-the training prompt contract, masks prompt labels, keeps the full target and EOS,
-and writes an Arrow-backed `DatasetDict` with a build manifest.
+Issues and pull requests are welcome. To run the core development checks:
 
-The training command requires prebuilt `train` and `validation` partitions. It
-invokes the real LLaMA-Factory LoRA SFT trainer; it does not generate teacher
-targets. The default training model is `Qwen/Qwen3-0.6B`; teacher-specific presets
-change the target dataset and output paths. GPU training requires a compatible
-PyTorch/CUDA and attention setup; `flash_attn` is configurable in the training
-preset.
-
-## Development
-
-```bash
+```shell
 uv sync --locked
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 uv run --locked pytest
 ```
 
-See [architecture](docs/architecture.md) for module responsibilities and the
-[migration record](docs/migration.md) for preserved behavior and validation limits.
-The regression suite uses deterministic responses; it does not run GPU models.
+The regression suite uses deterministic responses and does not run GPU models.
+We thank the authors of
+[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) for their training
+framework.
