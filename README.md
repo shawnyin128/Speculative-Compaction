@@ -126,8 +126,7 @@ Parameter definitions, defaults and validation live in
 
 The training pipeline prepares slot-supervision data and invokes the actual
 LLaMA-Factory LoRA SFT trainer. The framework is a separate module under
-[`src/LlamaFactory/`](src/LlamaFactory/), with its original license and a
-[local change record](src/LlamaFactory/LOCAL_CHANGES.md).
+[`src/LlamaFactory/`](src/LlamaFactory/), with its original license.
 
 **Step 1: Prepare the pretokenized dataset.**
 
@@ -182,25 +181,12 @@ print(result.metadata["elapsed_seconds"])
 print(result.metadata["accept_rate"])
 ```
 
-See [architecture](docs/architecture.md) for module responsibilities and the
-[migration record](docs/migration.md) for preserved behavior and validation limits.
-
 ## 📚 Citation
 
 Coming soon.
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. To run the core development checks:
-
-```shell
-uv sync --locked
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-uv run --locked pytest
-```
-
-The regression suite uses deterministic responses and does not run GPU models.
-We thank the authors of
+Issues and pull requests are welcome. We thank the authors of
 [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) for their training
 framework.
