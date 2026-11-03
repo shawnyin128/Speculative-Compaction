@@ -52,8 +52,8 @@ The method and its configuration are separate. Model-specific presets are in
 
 | Target | SFT drafter | Config |
 |---|---|---|
-| `google/gemma-4-31B-it` | `sy128/SpecComp-slot-sft-gemma4-31B-it` | [gemma4.yaml](configs/compact/gemma4.yaml) |
-| `Qwen/Qwen3.5-122B-A10B` | `sy128/SpecComp-slot-sft-qwen3-5-122B-A10B` | [qwen35.yaml](configs/compact/qwen35.yaml) |
+| `google/gemma-4-31B-it` | [sy128/SpecComp-slot-sft-gemma4-31B-it](https://huggingface.co/sy128/SpecComp-slot-sft-gemma4-31B-it) | [gemma4.yaml](configs/compact/gemma4.yaml) |
+| `Qwen/Qwen3.5-122B-A10B` | [sy128/SpecComp-slot-sft-qwen3-5-122B-A10B](https://huggingface.co/sy128/SpecComp-slot-sft-qwen3-5-122B-A10B) | [qwen35.yaml](configs/compact/qwen35.yaml) |
 
 Copy the preset for your target and edit the endpoint URLs and served model
 names. Keep each endpoint's tokenizer matched to the corresponding model:
