@@ -1,6 +1,10 @@
 <h1 align="center">SpecCompact: Accelerating LLM Agent Context Compaction with Slot-Parallel Semantic Speculative Verification</h1>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2611.06876"><img src="https://img.shields.io/badge/arXiv-2611.06876-b31b1b.svg" alt="arXiv:2611.06876"></a>
+</p>
+
+<p align="center">
   <img src="asset/demo.gif" alt="SpecCompact compaction demo" width="100%">
 </p>
 
@@ -216,7 +220,17 @@ print(result.metadata["accept_rate"])
 
 ## 📚 Citation
 
-Coming soon.
+```bibtex
+@misc{an2026speccompactacceleratingllmagent,
+  title={SpecCompact: Accelerating LLM Agent Context Compaction with Slot-Parallel Semantic Speculative Verification},
+  author={Yulu An and Yifei Feng and Xiangyang Yin},
+  year={2026},
+  eprint={2611.06876},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2611.06876},
+}
+```
 
 ## 🤝 Contributing
 
